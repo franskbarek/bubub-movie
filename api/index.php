@@ -5,6 +5,8 @@ define('LARAVEL_START', microtime(true));
 $root    = dirname(__DIR__);
 $tmpBase = '/tmp/laravel';
 
+require __DIR__ . '/../public/index.php';
+
 // ── 1. Buat writable dirs di /tmp ────────────────────────
 foreach ([
     "$tmpBase/storage/logs",
