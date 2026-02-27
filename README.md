@@ -109,7 +109,7 @@ resources/
 │   ├── favorites/
 │   │   └── index.blade.php             # Halaman daftar favorit
 │   └── components/
-│       └── movie-card.blade.php        # Komponen kartu film reusable
+│       └── movie-card.blade.php        # Komponen card film reusable
 └── lang/
     ├── en/                             # Terjemahan Bahasa Inggris
     └── id/                             # Terjemahan Bahasa Indonesia
