@@ -3,7 +3,7 @@
         'name' => 'bubub/movie',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => 'c38c3ee17df86a1a7274139eafb0c591ae546e87',
+        'reference' => '92717dfa3dcd617c7954f5e18ba8388ad38edfcc',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'bubub/movie' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => 'c38c3ee17df86a1a7274139eafb0c591ae546e87',
+            'reference' => '92717dfa3dcd617c7954f5e18ba8388ad38edfcc',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
