@@ -1,6 +1,6 @@
 {
     "private": true,
     "scripts": {
-        "build": "echo 'No frontend build needed'"
+        "build": "echo 'Skipping npm build - PHP only project'"
     }
 }
