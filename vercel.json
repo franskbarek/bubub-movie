@@ -5,17 +5,13 @@
         "api/index.php": { "runtime": "vercel-php@0.7.2" }
     },
     "routes": [
-        { "src": "/build/(.*)", "dest": "/public/build/" },
+        { "src": "/build/(.*)", "dest": "/public/build/$1" },
         { "src": "/(.*)", "dest": "/api/index.php" }
     ],
-    "public": true,
-    "buildCommand": "vite build",
-    "outputDirectory": "public",
     "env": {
         "APP_ENV": "production",
         "APP_DEBUG": "false",
-        "APP_URL": "https://bubub-movie.com",
-        "APP_KEY": "base64:tAF+Q5H3Tgrknpt6vaH8qbXYNi9Ys9DG/STpvOFUzqI=",
+        "APP_URL": "https://bubub-movie.vercel.app",
         "APP_CONFIG_CACHE": "/tmp/config.php",
         "APP_EVENTS_CACHE": "/tmp/events.php",
         "APP_PACKAGES_CACHE": "/tmp/packages.php",
@@ -23,18 +19,9 @@
         "APP_SERVICES_CACHE": "/tmp/services.php",
         "VIEW_COMPILED_PATH": "/tmp",
         "CACHE_DRIVER": "array",
-        "CACHE_STORE":"array",
+        "CACHE_STORE": "array",
         "LOG_CHANNEL": "stderr",
         "SESSION_DRIVER": "cookie",
-        "SESSION_LIFETIME":"120",
-
-        "DB_CONNECTION":"pgsql",
-        "DB_HOST":"ep-lingering-darkness-a19mgj2b-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
-        "DB_PORT":"5432",
-        "DB_DATABASE":"neondb",
-        "DB_USERNAME":"neondb_owner",
-        "DB_PASSWORD":"npg_31VDHYPQpovi",
-        "DB_SSLMODE":"require",
-        "DB_URL":"postgresql"
+        "SESSION_LIFETIME": "120"
     }
 }

@@ -180,6 +180,12 @@ async function initHeroCarousel() {
             .catch(() => m)
     );
 
+    // Actually fetch detail page via omdb i= for full plot/ratings
+    const fullDetailPromises = results.map(m =>
+        fetch('/movies/detail-json?i=' + m.imdbID, { headers: {'Accept':'application/json'} })
+            .catch(() => null)
+    );
+
     heroMovies = results; // use search results first for speed (render immediately)
 
     // Build slides with search data first
@@ -471,6 +477,86 @@ async function handleFav(btn, imdbId, title, year, poster, type) {
     finally { btn.style.pointerEvents = ''; }
 }
 
+// ─── Hero ─────────────────────────────────────────────────
+let heroImdbId = null;
+
+function setHero(movie) {
+    if (!movie || !movie.imdbID) return;
+    heroImdbId = movie.imdbID;
+
+    const section = document.getElementById('heroSection');
+    section.style.display = 'flex';
+
+    if (movie.Poster && movie.Poster !== 'N/A') {
+        const poster = document.getElementById('heroPoster');
+        poster.src     = movie.Poster;
+        poster.alt     = movie.Title || '';
+        poster.style.display = 'block';
+    }
+
+    const genres = (movie.Genre && movie.Genre !== 'N/A') ? movie.Genre : '';
+    document.getElementById('heroGenres').innerHTML = genres
+        .split(',').slice(0, 3)
+        .map(g => `<span class="genre-tag">${g.trim()}</span>`).join('');
+
+    document.getElementById('heroTitle').textContent = movie.Title || '';
+
+    const rating = (movie.imdbRating && movie.imdbRating !== 'N/A')
+        ? `<span class="hero-rating"><i class="fas fa-star" style="color:#f5c518"></i> ${movie.imdbRating}</span>` : '';
+    const runtime = (movie.Runtime && movie.Runtime !== 'N/A') ? `<span>${movie.Runtime}</span>` : '';
+    const rated   = (movie.Rated   && movie.Rated   !== 'N/A') ? `<span style="border:1px solid #aaa;padding:1px 6px;font-size:0.75rem;border-radius:2px;">${movie.Rated}</span>` : '';
+    document.getElementById('heroMeta').innerHTML = `${rating}<span>${movie.Year || ''}</span>${runtime}${rated}`;
+
+    document.getElementById('heroPlot').textContent = (movie.Plot && movie.Plot !== 'N/A') ? movie.Plot : '';
+    document.getElementById('heroLink').href = '/movies/' + movie.imdbID;
+    updateHeroFavBtn();
+}
+
+function updateHeroFavBtn() {
+    if (!heroImdbId) return;
+    const btn  = document.getElementById('heroFavBtn');
+    const isFav = favoriteIds.has(heroImdbId);
+    btn.className = 'btn ' + (isFav ? 'btn-primary' : 'btn-secondary');
+    btn.innerHTML = `<i class="${isFav ? 'fas' : 'far'} fa-heart"></i> ${isFav ? '{{ __("favorites.remove") }}' : '{{ __("favorites.add") }}'}`;
+}
+
+async function heroFavToggle() {
+    if (!heroImdbId) return;
+    const heroCard = {
+        imdbID: heroImdbId,
+        Title:  document.getElementById('heroTitle').textContent,
+        Year:   '',
+        Poster: document.getElementById('heroPoster').src,
+        Type:   'movie',
+    };
+    const btn = document.getElementById('heroFavBtn');
+    const isFav = favoriteIds.has(heroImdbId);
+    btn.disabled = true;
+    try {
+        let res;
+        if (isFav) {
+            res = await fetch('/favorites/' + heroImdbId, { method:'DELETE', headers:{'X-CSRF-TOKEN':CSRF,'Accept':'application/json'} });
+        } else {
+            res = await fetch('/favorites', {
+                method:'POST',
+                headers:{'X-CSRF-TOKEN':CSRF,'Content-Type':'application/json','Accept':'application/json'},
+                body: JSON.stringify({ imdb_id: heroCard.imdbID, title: heroCard.Title, year: heroCard.Year, poster: heroCard.Poster, type: heroCard.Type })
+            });
+        }
+        const data = await res.json();
+        if (data.success) {
+            data.favorited ? favoriteIds.add(heroImdbId) : favoriteIds.delete(heroImdbId);
+            updateHeroFavBtn();
+            document.querySelectorAll(`.fav-btn[data-id="${heroImdbId}"]`).forEach(b => {
+                b.classList.toggle('favorited', data.favorited);
+                b.querySelector('i').className = data.favorited ? 'fas fa-heart' : 'far fa-heart';
+            });
+            showToast(data.message, 'success');
+        }
+    } catch(e) { showToast('Error', 'error'); }
+    finally { btn.disabled = false; }
+}
+
 // ─── Load category rows ───────────────────────────────────
 async function loadCategory(rowId, query) {
     const row = document.getElementById('row-' + rowId);
@@ -519,7 +605,7 @@ function doSearch() {
 
     if (hasFilter) {
         document.getElementById('categoriesSection').style.display    = 'none';
-        document.getElementById('heroCarousel').style.display         = 'none';
+        document.getElementById('heroSection').style.display          = 'none';
         document.getElementById('searchResultsSection').style.display = 'block';
 
         // Build label
@@ -534,7 +620,7 @@ function doSearch() {
         fetchSearchPage();
     } else {
         document.getElementById('categoriesSection').style.display    = 'block';
-        document.getElementById('heroCarousel').style.display         = 'block';
+        document.getElementById('heroSection').style.display          = 'flex';
         document.getElementById('searchResultsSection').style.display = 'none';
     }
 }
@@ -558,10 +644,8 @@ async function fetchSearchPage() {
 
         if (searchPage === 1) {
             searchTotal = total;
-            let titleLabel = currentQuery
-                ? '{{ __("movies.results_for") }}: "' + currentQuery + '" (' + total + ' {{ __("movies.results") }})'
-                : '{{ __("movies.results") }}: ' + total + ' {{ __("movies.results") }}';
-            document.getElementById('searchResultsTitle').textContent = titleLabel;
+            document.getElementById('searchResultsTitle').textContent =
+                '{{ __("movies.results_for") }}: "' + currentQuery + '" (' + total + ' {{ __("movies.results") }})';
         }
 
         const grid = document.getElementById('searchGrid');
@@ -608,7 +692,7 @@ const acBox       = document.getElementById('autocompleteBox');
 searchInput.addEventListener('input', () => {
     clearTimeout(acTimer);
     const q = searchInput.value.trim();
-    if (q.length < 2) { acBox.style.display = 'none'; return; }
+    if (q.length < 3) { acBox.style.display = 'none'; return; }
     acTimer = setTimeout(async () => {
         try {
             const res  = await fetch('/movies/autocomplete?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });

@@ -1,24 +1,21 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use App\Models\Favorite;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Models\Favorite;
 
 class MovieController extends Controller
 {
     private string $apiUrl = 'https://www.omdbapi.com/';
 
     private array $popular = [
-        'Avatar: Fire and Ash', 'Top Gun', 'Interstellar',
+        'Avengers', 'Batman', 'Spider-Man', 'Star Wars', 'Jurassic',
+        'Avatar', 'Lion King', 'Frozen', 'Top Gun', 'Inception',
+        'Transformers', 'Captain Marvel', 'Harry Potter', 'Fast Furious',
+        'Black Panther', 'Iron Man', 'Thor', 'Wonder Woman', 'Interstellar',
     ];
-
-    // private array $popular = [
-    //     'Avengers', 'Batman', 'Spider-Man', 'Star Wars', 'Jurassic',
-    //     'Avatar', 'Lion King', 'Frozen', 'Top Gun', 'Inception',
-    //     'Transformers', 'Captain Marvel', 'Harry Potter', 'Fast Furious',
-    //     'Black Panther', 'Iron Man', 'Thor', 'Wonder Woman', 'Interstellar',
-    // ];
 
     public function index()
     {
@@ -36,19 +33,10 @@ class MovieController extends Controller
         $type = $request->input('type', '');
         $year = $request->input('year', '');
 
-        // Jika tidak ada query:
-        // - Jika ada type/year → pakai keyword generik berdasarkan type agar filter bekerja
-        // - Jika tidak ada filter sama sekali → pakai keyword populer acak
-        if (! $q) {
-            if ($type === 'series') {
-                $q = 'the'; // banyak series mengandung kata "the"
-            } elseif ($type === 'movie') {
-                $q = 'the'; // banyak film mengandung kata "the"
-            } elseif ($year) {
-                $q = $this->popular[array_rand($this->popular)];
-            } else {
-                $q = $this->popular[array_rand($this->popular)];
-            }
+        // Jika tidak ada query tapi ada year/type → pakai keyword populer acak
+        // Jika tidak ada query, tidak ada year, tidak ada type → tampilkan populer
+        if (!$q) {
+            $q = $this->popular[array_rand($this->popular)];
         }
 
         $params = [
@@ -57,13 +45,8 @@ class MovieController extends Controller
             'page'   => $page,
         ];
 
-        if ($type) {
-            $params['type'] = $type;
-        }
-
-        if ($year) {
-            $params['y'] = $year;
-        }
+        if ($type) $params['type'] = $type;
+        if ($year) $params['y']    = $year;
 
         $res = Http::timeout(10)->get($this->apiUrl, $params);
 
@@ -74,7 +57,7 @@ class MovieController extends Controller
     {
         $q = trim($request->input('q', ''));
 
-        if (strlen($q) < 2) {
+        if (strlen($q) < 3) {
             return response()->json([]);
         }
 
@@ -122,9 +105,9 @@ class MovieController extends Controller
 
         // Similar movies berdasarkan genre pertama
         $similar = [];
-        if (! empty($movie['Genre'])) {
+        if (!empty($movie['Genre'])) {
             $firstGenre = trim(explode(',', $movie['Genre'])[0]);
-            $simRes     = Http::timeout(10)->get($this->apiUrl, [
+            $simRes = Http::timeout(10)->get($this->apiUrl, [
                 'apikey' => config('services.omdb.key'),
                 's'      => $firstGenre,
                 'page'   => 1,
@@ -147,7 +130,7 @@ class MovieController extends Controller
     public function detailJson(Request $request)
     {
         $imdbId = $request->input('i', '');
-        if (! $imdbId) {
+        if (!$imdbId) {
             return response()->json(['Response' => 'False', 'Error' => 'No ID provided']);
         }
 

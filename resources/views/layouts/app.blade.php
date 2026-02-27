@@ -296,16 +296,6 @@
     </style>
 
     @stack('styles')
-    <style>
-    .nav-ac-item {
-        padding: 10px 14px; cursor: pointer;
-        display: flex; align-items: center; gap: 10px;
-        border-bottom: 1px solid #2a2a2a;
-        transition: background 0.15s; color: white;
-    }
-    .nav-ac-item:hover { background: rgba(255,255,255,0.07); }
-    .nav-ac-item:last-child { border-bottom: none; }
-    </style>
 </head>
 <body>
     <!-- Navbar -->
@@ -325,13 +315,10 @@
 
         <div class="navbar-right">
             <!-- Search -->
-            <div style="position:relative;">
-                <form id="navSearchForm" action="{{ route('movies.index') }}" method="GET" class="search-bar">
-                    <i class="fas fa-search"></i>
-                    <input type="text" id="navSearchInput" name="q" value="{{ request('q') }}" placeholder="{{ __('nav.search_placeholder') }}" autocomplete="off">
-                </form>
-                <div id="navAcBox" style="display:none;position:absolute;top:calc(100% + 6px);right:0;width:280px;background:#1f1f1f;border:1px solid #333;border-radius:6px;z-index:2000;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.6);"></div>
-            </div>
+            <form action="{{ route('movies.index') }}" method="GET" class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('nav.search_placeholder') }}" autocomplete="off">
+            </form>
 
             <!-- Language Switcher -->
             <div class="lang-switcher">
@@ -403,90 +390,7 @@
             (container || document).querySelectorAll('img[data-src]').forEach(img => lazyObserver.observe(img));
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            observeLazy(document);
-
-            // ── Navbar Search Handler ──────────────────────────────
-            // Jika di halaman index → intercept dan gunakan doSearch() langsung
-            // Jika di halaman lain → biarkan redirect ke index dengan ?q=...
-            const navForm  = document.getElementById('navSearchForm');
-            const navInput = document.getElementById('navSearchInput');
-
-            navForm.addEventListener('submit', function(e) {
-                const q = navInput.value.trim();
-                if (typeof doSearch === 'function') {
-                    e.preventDefault();
-                    const mainInput = document.getElementById('searchInput');
-                    if (mainInput) mainInput.value = q;
-                    doSearch();
-                    const filterBar = document.querySelector('.filter-bar');
-                    if (filterBar) filterBar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-                // Jika bukan halaman index → submit normal (redirect ke index)
-            });
-
-            // Autocomplete navbar — logika sama persis dengan search bawah
-            const navAcBox = document.getElementById('navAcBox');
-            let navAcTimer;
-
-            navInput.addEventListener('input', () => {
-                clearTimeout(navAcTimer);
-                const q = navInput.value.trim();
-                if (q.length < 2) { navAcBox.style.display = 'none'; return; }
-                navAcTimer = setTimeout(async () => {
-                    try {
-                        const res  = await fetch('/movies/autocomplete?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });
-                        const data = await res.json();
-                        if (!data.length) { navAcBox.style.display = 'none'; return; }
-                        navAcBox.innerHTML = data.map(s => `
-                            <div class="autocomplete-item" onclick="navAcSelect('${s.title.replace(/'/g, "\\'")}')">
-                                <i class="fas fa-film" style="color:var(--text-muted);font-size:0.8rem;flex-shrink:0;"></i>
-                                <span>${s.title}</span>
-                                <span class="ac-year">${s.year}</span>
-                            </div>
-                        `).join('');
-                        navAcBox.style.display = 'block';
-                    } catch(e) {}
-                }, 300);
-            });
-
-            // navAcSelect didaftarkan ke window agar bisa dipanggil dari onclick attribute
-            window.navAcSelect = function(title) {
-                document.getElementById('navAcBox').style.display = 'none';
-                const mainInput = document.getElementById('searchInput');
-                if (mainInput) {
-                    mainInput.value = title;
-                    selectAc(title);
-                } else {
-                    window.location.href = '/?' + new URLSearchParams({ q: title });
-                }
-            };
-
-            navInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter') { navAcBox.style.display = 'none'; }
-            });
-
-            document.addEventListener('click', e => {
-                if (!navInput.contains(e.target) && !navAcBox.contains(e.target)) {
-                    navAcBox.style.display = 'none';
-                }
-            });
-
-            // Jika dibuka dari redirect halaman lain dengan ?q=...
-            const urlParams = new URLSearchParams(window.location.search);
-            const qFromUrl  = urlParams.get('q');
-            if (qFromUrl && typeof doSearch !== 'function') return;
-            if (qFromUrl) {
-                setTimeout(() => {
-                    const mainInput = document.getElementById('searchInput');
-                    if (mainInput && !mainInput.value) {
-                        mainInput.value = qFromUrl;
-                        navInput.value  = qFromUrl;
-                        doSearch();
-                    }
-                }, 400);
-            }
-        });
+        document.addEventListener('DOMContentLoaded', () => observeLazy(document));
 
         // Favorite toggle
         async function toggleFavorite(btn, imdbId, title, year, poster, type) {

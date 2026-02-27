@@ -140,15 +140,17 @@
         </div>
     </div>
 
-    {{-- Similar / More Like This — Infinite Scroll --}}
-    <section class="row-section" style="margin-top:40px;padding-bottom:60px;">
+    {{-- Similar / More Like This --}}
+    @if(!empty($similar))
+    <section class="row-section" style="margin-top: 40px;">
         <h2 class="row-title">{{ __('movies.more_like_this') }}</h2>
-        <div class="search-grid" id="similarGrid"></div>
-        <div style="text-align:center;padding:32px 0;">
-            <div class="spinner" id="similarSpinner" style="display:none;"><div class="spinner-ring"></div></div>
+        <div class="movies-row">
+            @foreach($similar as $m)
+            @include('components.movie-card', ['movie' => $m, 'favoriteIds' => [$isFavorite ? $movie['imdbID'] : '']])
+            @endforeach
         </div>
-        <div id="similarSentinel" style="height:10px;"></div>
     </section>
+    @endif
 </article>
 
 @push('scripts')
@@ -193,122 +195,6 @@ async function toggleFavDetail() {
         btn.disabled = false;
     }
 }
-
-// ─── Infinite Scroll "Mungkin Anda Suka" ─────────────────────────────────────
-// Ambil genre pertama dari film ini untuk seed query awal,
-// lalu rotasi ke keyword populer agar hasilnya terus bervariasi
-const SIMILAR_QUERIES = (() => {
-    const genre = @json(isset($movie['Genre']) ? trim(explode(',', $movie['Genre'])[0]) : '');
-    const base = [
-        genre,
-        'action', 'drama', 'comedy', 'thriller', 'adventure',
-        'science fiction', 'horror', 'romance', 'animation', 'crime',
-        'fantasy', 'mystery', 'biography', 'history', 'family',
-    ].filter(Boolean);
-    return base;
-})();
-
-let simPage        = 1;
-let simQueryIndex  = 0;
-let simLoading     = false;
-let simExhausted   = false;
-const simGrid      = document.getElementById('similarGrid');
-const simSpinner   = document.getElementById('similarSpinner');
-const simSeenIds   = new Set([imdbId]); // jangan tampilkan film yang sedang dibuka
-
-function buildSimCard(movie) {
-    const hasPoster = movie.Poster && movie.Poster !== 'N/A';
-    const poster    = hasPoster ? movie.Poster : '';
-    const safeTitle = (movie.Title || '').replace(/"/g, '&quot;');
-
-    const a = document.createElement('a');
-    a.href      = '/movies/' + movie.imdbID;
-    a.className = 'movie-card';
-    a.style.textDecoration = 'none';
-
-    a.innerHTML = `
-        ${ hasPoster
-            ? `<img data-src="${poster}" alt="${safeTitle}" class="card-poster" style="opacity:0;transition:opacity 0.4s;">`
-            : `<div class="card-poster-placeholder"><i class="fas fa-film"></i><span>${movie.Title || ''}</span></div>`
-        }
-        <div class="card-overlay">
-            <div class="card-title">${movie.Title || ''}</div>
-            <div class="card-meta">
-                <span class="year-badge">${movie.Year || ''}</span>
-                <span class="card-type-badge badge-${movie.Type === 'series' ? 'series' : 'movie'}">${movie.Type || 'movie'}</span>
-            </div>
-        </div>
-    `;
-    return a;
-}
-
-async function loadSimilar() {
-    if (simLoading || simExhausted) return;
-    simLoading = true;
-    simSpinner.style.display = 'flex';
-
-    try {
-        const query = SIMILAR_QUERIES[simQueryIndex % SIMILAR_QUERIES.length];
-        const params = new URLSearchParams({ q: query, type: 'movie', page: simPage });
-        const res    = await fetch('/movies/search?' + params, { headers: { 'Accept': 'application/json' } });
-        const data   = await res.json();
-        const movies = (data.Search || []).filter(m => !simSeenIds.has(m.imdbID));
-
-        if (!movies.length) {
-            // Query ini habis → coba query berikutnya dari page 1
-            simQueryIndex++;
-            simPage = 1;
-            if (simQueryIndex >= SIMILAR_QUERIES.length) {
-                simExhausted = true;
-            }
-        } else {
-            const fragment = document.createDocumentFragment();
-            movies.forEach(m => {
-                simSeenIds.add(m.imdbID);
-                fragment.appendChild(buildSimCard(m));
-            });
-            simGrid.appendChild(fragment);
-            observeLazy(simGrid);
-
-            // Cek apakah masih ada halaman berikutnya
-            const total  = parseInt(data.totalResults || 0);
-            const loaded = simGrid.querySelectorAll('.movie-card').length;
-            simPage++;
-            if (simPage > Math.ceil(total / 10)) {
-                // Pindah ke query berikutnya
-                simQueryIndex++;
-                simPage = 1;
-            }
-        }
-    } catch(e) {
-        console.error('Similar load error:', e);
-    } finally {
-        simLoading = false;
-        simSpinner.style.display = 'none';
-        // Cek lagi setelah load selesai — jika sentinel masih di viewport, lanjut load
-        checkAndLoad();
-    }
-}
-
-// Scroll-based infinite scroll — lebih reliable dari IntersectionObserver
-function checkAndLoad() {
-    if (simLoading || simExhausted) return;
-    const sentinel = document.getElementById('similarSentinel');
-    const rect = sentinel.getBoundingClientRect();
-    // Trigger jika sentinel dalam 800px dari bawah viewport
-    if (rect.top < window.innerHeight + 800) {
-        loadSimilar();
-    }
-}
-
-// Listen scroll di window
-window.addEventListener('scroll', checkAndLoad, { passive: true });
-
-// Polling sebagai fallback — cek setiap 500ms kalau scroll tidak trigger
-setInterval(checkAndLoad, 500);
-
-// Load pertama langsung
-document.addEventListener('DOMContentLoaded', () => loadSimilar());
 </script>
 @endpush
 @endsection
