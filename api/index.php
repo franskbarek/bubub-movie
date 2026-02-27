@@ -1,28 +1,22 @@
 <?php
 
-/**
- * Vercel Serverless Entry Point for Laravel 11
- * Fully /tmp-based storage — no symlinks needed
- */
-
 define('LARAVEL_START', microtime(true));
 
 $root    = dirname(__DIR__);
 $tmpBase = '/tmp/laravel';
 
-// ── 1. Create /tmp dirs ───────────────────────────────────
+// ── 1. Buat writable dirs di /tmp ────────────────────────
 foreach ([
     "$tmpBase/storage/logs",
     "$tmpBase/storage/framework/cache/data",
     "$tmpBase/storage/framework/sessions",
     "$tmpBase/storage/framework/views",
     "$tmpBase/storage/app/public",
-    "$tmpBase/bootstrap/cache",
 ] as $dir) {
     is_dir($dir) || mkdir($dir, 0755, true);
 }
 
-// ── 2. Override env BEFORE dotenv loads ──────────────────
+// ── 2. Force env ─────────────────────────────────────────
 $_ENV['LOG_CHANNEL']    = 'stderr';
 $_ENV['CACHE_STORE']    = 'array';
 $_ENV['SESSION_DRIVER'] = 'cookie';
@@ -33,23 +27,21 @@ putenv('SESSION_DRIVER=cookie');
 // ── 3. Server vars ────────────────────────────────────────
 $_SERVER['DOCUMENT_ROOT']   = $root . '/public';
 $_SERVER['SCRIPT_FILENAME'] = $root . '/public/index.php';
-
 chdir($root);
 
-// ── 4. Autoload ───────────────────────────────────────────
+// ── 4. Boot ───────────────────────────────────────────────
 require $root . '/vendor/autoload.php';
 
-// ── 5. Maintenance mode ───────────────────────────────────
 if (file_exists($m = $root . '/storage/framework/maintenance.php')) {
     require $m;
 }
 
-// ── 6. Boot Laravel with /tmp storage path ───────────────
+use Illuminate\Http\Request;
+
 $app = require_once $root . '/bootstrap/app.php';
 
-// Tell Laravel to use /tmp for storage AND bootstrap/cache
+// Override storage → /tmp (untuk logs, sessions, views cache, framework cache)
+// bootstrap/cache sudah di-commit ke repo, tidak perlu writable
 $app->useStoragePath("$tmpBase/storage");
-$app->instance('path.bootstrap', "$tmpBase/bootstrap");
 
-use Illuminate\Http\Request;
 $app->handleRequest(Request::capture());
