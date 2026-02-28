@@ -135,16 +135,20 @@
 
 @push('scripts')
 <script>
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-const favoriteIds = new Set(@json($favoriteIds));
+// Prevent duplicate script execution
+if (!window.bububMovieInitialized) {
+    window.bububMovieInitialized = true;
 
-// lazyObserver & observeLazy defined in layouts/app.blade.php
+    const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+    const favoriteIds = new Set(@json($favoriteIds));
 
-// ─── Hero Carousel ────────────────────────────────────────
-let heroMovies   = [];   // array of full detail objects
-let heroIndex    = 0;
-let heroAutoTimer = null;
-let heroImdbId   = null;
+    // lazyObserver & observeLazy defined in layouts/app.blade.php
+
+    // ─── Hero Carousel ────────────────────────────────────────
+    let heroMovies   = [];   // array of full detail objects
+    let heroIndex    = 0;
+    let heroAutoTimer = null;
+    let heroImdbId   = null;
 
 // Box office keywords 2025-2026
 const BOX_OFFICE_QUERIES = [
@@ -525,7 +529,7 @@ function doSearch() {
 
     if (hasFilter) {
         document.getElementById('categoriesSection').style.display    = 'none';
-        document.getElementById('heroSection').style.display          = 'none';
+        document.getElementById('heroCarousel').style.display         = 'none';
         document.getElementById('searchResultsSection').style.display = 'block';
 
         // Build label
@@ -540,7 +544,7 @@ function doSearch() {
         fetchSearchPage();
     } else {
         document.getElementById('categoriesSection').style.display    = 'block';
-        document.getElementById('heroSection').style.display          = 'flex';
+        document.getElementById('heroCarousel').style.display         = 'block';
         document.getElementById('searchResultsSection').style.display = 'none';
     }
 }
@@ -661,6 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCategory('drama',    'drama');
     loadCategory('comedy',   'comedy');
 });
+
+} // End of bububMovieInitialized check
 </script>
 @endpush
 
