@@ -15,8 +15,6 @@ COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
 
-RUN npm install
-
 RUN chmod -R 775 storage bootstrap/cache
 
 RUN php artisan config:clear || true \
