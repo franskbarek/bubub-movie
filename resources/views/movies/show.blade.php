@@ -144,34 +144,129 @@
     </div>
 
     {{-- Similar / More Like This --}}
-    @if(!empty($similar))
-    <section class="row-section" style="margin-top: 40px;">
+    <section class="row-section" style="margin-top:40px;padding-bottom:60px;" id="similarSection">
         <h2 class="row-title">{{ __('movies.more_like_this') }}</h2>
-        <div class="movies-row">
+
+        {{-- Grid instead of row for infinite scroll --}}
+        <div class="search-grid" id="similarGrid">
             @foreach($similar as $m)
             @include('components.movie-card', ['movie' => $m, 'favoriteIds' => [$isFavorite ? $movie['imdbID'] : '']])
             @endforeach
         </div>
+
+        {{-- Loading & end --}}
+        <div style="text-align:center;padding:32px 0;">
+            <div class="spinner" id="similarSpinner" style="display:none;justify-content:center;"><div class="spinner-ring"></div></div>
+            <div id="similarEnd" style="color:var(--text-muted);font-size:0.85rem;display:none;">
+                <i class="fas fa-check-circle" style="margin-right:6px;color:#46d369;"></i>{{ __('movies.end_of_results') }}
+            </div>
+        </div>
+
+        {{-- Sentinel for infinite scroll --}}
+        <div id="similarSentinel" style="height:10px;"></div>
     </section>
-    @endif
 </article>
 
 @push('scripts')
 <script>
-// Lazy load untuk semua gambar di halaman ini
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof observeLazy === 'function') {
-        observeLazy(document);
-    }
-});
-
-const imdbId = @json($movie['imdbID'] ?? '');
-const movieTitle = @json($movie['Title'] ?? '');
+// ── Config dari server ────────────────────────────────────
+const imdbId    = @json($movie['imdbID'] ?? '');
+const movieGenre = @json(isset($movie['Genre']) && $movie['Genre'] !== 'N/A' ? trim(explode(',', $movie['Genre'])[0]) : 'action');
+const movieTitle  = @json($movie['Title'] ?? '');
 const movieYear = @json($movie['Year'] ?? '');
 const moviePoster = @json(($movie['Poster'] ?? '') !== 'N/A' ? ($movie['Poster'] ?? '') : '');
 const movieType = @json($movie['Type'] ?? 'movie');
 let isFavorite = {{ $isFavorite ? 'true' : 'false' }};
 const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+// ── Infinite Scroll - More Like This ─────────────────────
+let similarPage    = 2; // halaman 1 sudah dirender server
+let similarLoading = false;
+let similarHasMore = true;
+const similarLoadedIds = new Set(@json(collect($similar)->pluck('imdbID')->toArray()));
+
+function buildSimilarCard(m) {
+    const poster = (m.Poster && m.Poster !== 'N/A') ? m.Poster : null;
+    const card   = document.createElement('div');
+    card.className = 'movie-card';
+    card.style.cssText = 'animation:fadeIn 0.3s ease;';
+    card.innerHTML = `
+        <a href="/movies/${m.imdbID}" class="card-link">
+            <div class="card-poster">
+                ${poster
+                    ? `<img data-src="${poster}" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="${m.Title}" class="lazy" style="opacity:0;transition:opacity 0.4s;">`
+                    : `<div style="width:100%;height:100%;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;"><i class="fas fa-film" style="color:#555;font-size:2rem;"></i></div>`
+                }
+                <div class="card-overlay">
+                    <div class="card-title">${m.Title}</div>
+                    <div class="card-meta">${m.Year || ''}</div>
+                </div>
+            </div>
+        </a>
+    `;
+    return card;
+}
+
+async function fetchSimilarPage() {
+    if (similarLoading || !similarHasMore) return;
+    similarLoading = true;
+
+    const spinner = document.getElementById('similarSpinner');
+    const endMsg  = document.getElementById('similarEnd');
+    const grid    = document.getElementById('similarGrid');
+    spinner.style.display = 'flex';
+
+    try {
+        const res  = await fetch(`/movies/search?q=${encodeURIComponent(movieGenre)}&type=movie&page=${similarPage}`, {
+            headers: { 'Accept': 'application/json' }
+        });
+        const data   = await res.json();
+        const movies = (data.Search || []).filter(m => m.imdbID !== imdbId && !similarLoadedIds.has(m.imdbID));
+
+        if (!movies.length) {
+            similarHasMore = false;
+            endMsg.style.display = 'block';
+        } else {
+            const frag = document.createDocumentFragment();
+            movies.forEach(m => {
+                similarLoadedIds.add(m.imdbID);
+                frag.appendChild(buildSimilarCard(m));
+            });
+            grid.appendChild(frag);
+            if (typeof observeLazy === 'function') observeLazy(grid);
+
+            similarPage++;
+            // OMDb max 100 results (10 per page)
+            similarHasMore = similarPage <= 10 && movies.length > 0;
+            if (!similarHasMore) endMsg.style.display = 'block';
+        }
+    } catch(e) { console.error(e); }
+    finally {
+        similarLoading = false;
+        spinner.style.display = 'none';
+    }
+}
+
+// Observer + scroll fallback
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof observeLazy === 'function') observeLazy(document);
+
+    const sentinel = document.getElementById('similarSentinel');
+    if (sentinel) {
+        new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && similarHasMore && !similarLoading) {
+                fetchSimilarPage();
+            }
+        }, { rootMargin: '500px' }).observe(sentinel);
+    }
+});
+
+window.addEventListener('scroll', () => {
+    if (!similarHasMore || similarLoading) return;
+    const scrollBottom = window.innerHeight + window.scrollY;
+    const docHeight    = document.documentElement.scrollHeight;
+    if (scrollBottom >= docHeight - 400) fetchSimilarPage();
+}, { passive: true });
 
 async function toggleFavDetail() {
     const btn = document.getElementById('favBtn');
