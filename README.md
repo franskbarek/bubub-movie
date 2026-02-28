@@ -1,6 +1,6 @@
 # 🎬 Bubub Movie
 
-Platform streaming film bergaya Netflix yang dibangun dengan Laravel 11 dan ditenagai oleh OMDb API.
+Platform streaming film bergaya Netflix yang dibangun dengan Laravel 11 dan API OMDb API.
 
 ![alt text](image-2.png)
 
