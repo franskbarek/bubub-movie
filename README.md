@@ -2,11 +2,7 @@
 
 Platform streaming film bergaya Netflix yang dibangun dengan Laravel 11 dan API OMDb API.
 
-![alt text](image-2.png)
-
 ---
-
-![alt text](<Screenshot (1).png>)
 
 ## ✨ Fitur Utama
 
@@ -126,6 +122,14 @@ Aplikasi berjalan di: http://localhost:8000
 ---
 
 ## 📸 Screenshot
+
+![alt text](image-2.png)
+
+---
+
+![alt text](<Screenshot (1).png>)
+
+---
 
 ### Halaman Login
 - Form login bergaya Netflix dengan background grid merah
