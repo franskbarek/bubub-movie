@@ -314,11 +314,21 @@
         </div>
 
         <div class="navbar-right">
-            <!-- Search -->
-            <form action="{{ route('movies.index') }}" method="GET" class="search-bar">
-                <i class="fas fa-search"></i>
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="{{ __('nav.search_placeholder') }}" autocomplete="off">
-            </form>
+            <!-- Search with autocomplete -->
+            <div class="search-bar" id="navSearchWrapper" style="position:relative;">
+                <i class="fas fa-search" style="cursor:pointer;" onclick="navDoSearch()"></i>
+                <input type="text" id="navSearchInput" placeholder="{{ __('nav.search_placeholder') }}"
+                    autocomplete="off" value="{{ request('q') }}"
+                    onkeydown="if(event.key==='Enter'){navDoSearch()}"
+                >
+                <!-- Dropdown autocomplete -->
+                <div id="navAcBox" style="
+                    display:none;position:absolute;top:calc(100% + 8px);right:0;
+                    width:320px;background:#1a1a1a;border:1px solid #333;
+                    border-radius:8px;z-index:9999;overflow:hidden;
+                    box-shadow:0 8px 24px rgba(0,0,0,0.6);
+                "></div>
+            </div>
 
             <!-- Language Switcher -->
             <div class="lang-switcher">
@@ -432,6 +442,92 @@
                 btn.style.pointerEvents = '';
             }
         }
+
+        // ── Navbar Search & Autocomplete ──────────────────────
+        function navDoSearch() {
+            const q = document.getElementById('navSearchInput').value.trim();
+            document.getElementById('navAcBox').style.display = 'none';
+            if (!q) return;
+
+            // Kalau di halaman movies, trigger search langsung tanpa reload
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.value = q;
+                if (typeof doSearch === 'function') {
+                    doSearch();
+                    document.getElementById('navSearchInput').blur();
+                    return;
+                }
+            }
+            // Kalau di halaman lain, redirect ke movies dengan query
+            window.location.href = '/?q=' + encodeURIComponent(q);
+        }
+
+        // Autocomplete navbar
+        let navAcTimer;
+        const navInput = document.getElementById('navSearchInput');
+        const navAcBox = document.getElementById('navAcBox');
+
+        if (navInput) {
+            navInput.addEventListener('input', function() {
+                clearTimeout(navAcTimer);
+                const q = this.value.trim();
+                if (q.length < 3) { navAcBox.style.display = 'none'; return; }
+
+                navAcTimer = setTimeout(async () => {
+                    try {
+                        const res  = await fetch('/movies/autocomplete?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } });
+                        const data = await res.json();
+                        if (!data.length) { navAcBox.style.display = 'none'; return; }
+
+                        navAcBox.innerHTML = data.map(s => `
+                            <div onclick="navSelectAc('${s.title.replace(/'/g, "\'")}','${s.imdbId}')"
+                                style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid #2a2a2a;transition:background 0.15s;"
+                                onmouseover="this.style.background='rgba(255,255,255,0.07)'"
+                                onmouseout="this.style.background='transparent'">
+                                <i class="fas fa-film" style="color:#666;font-size:0.8rem;flex-shrink:0;"></i>
+                                <div style="flex:1;overflow:hidden;">
+                                    <div style="font-size:0.88rem;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.title}</div>
+                                    <div style="font-size:0.75rem;color:#888;">${s.year} · ${s.type || 'movie'}</div>
+                                </div>
+                                <i class="fas fa-arrow-right" style="color:#555;font-size:0.75rem;flex-shrink:0;"></i>
+                            </div>
+                        `).join('');
+
+                        // Footer hint
+                        navAcBox.innerHTML += `
+                            <div onclick="navDoSearch()"
+                                style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:8px;background:rgba(229,9,20,0.08);border-top:1px solid #2a2a2a;transition:background 0.15s;"
+                                onmouseover="this.style.background='rgba(229,9,20,0.15)'"
+                                onmouseout="this.style.background='rgba(229,9,20,0.08)'">
+                                <i class="fas fa-search" style="color:#E50914;font-size:0.8rem;"></i>
+                                <span style="font-size:0.83rem;color:#ccc;">Cari "<strong style="color:white;">${q}</strong>"</span>
+                            </div>
+                        `;
+
+                        navAcBox.style.display = 'block';
+                    } catch(e) {}
+                }, 300);
+            });
+
+            navInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') navAcBox.style.display = 'none';
+            });
+        }
+
+        function navSelectAc(title, imdbId) {
+            navAcBox.style.display = 'none';
+            // Langsung buka halaman detail film
+            window.location.href = '/movies/' + imdbId;
+        }
+
+        // Tutup dropdown saat klik di luar
+        document.addEventListener('click', function(e) {
+            if (navInput && !navInput.contains(e.target) && !navAcBox.contains(e.target)) {
+                navAcBox.style.display = 'none';
+            }
+        });
+
     </script>
 
     @stack('scripts')

@@ -78,8 +78,6 @@ class MovieController extends Controller
                 'title'  => $m['Title'],
                 'year'   => $m['Year'],
                 'imdbId' => $m['imdbID'],
-                'type'   => $m['Type'] ?? 'movie',
-                'poster' => isset($m['Poster']) && $m['Poster'] !== 'N/A' ? $m['Poster'] : null,
             ])
             ->take(6)
             ->values();
