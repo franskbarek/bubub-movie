@@ -2,7 +2,11 @@
 
 Platform streaming film bergaya Netflix yang dibangun dengan Laravel 11 dan ditenagai oleh OMDb API.
 
+![alt text](image-2.png)
+
 ---
+
+![alt text](<Screenshot (1).png>)
 
 ## ✨ Fitur Utama
 
