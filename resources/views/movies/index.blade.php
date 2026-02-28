@@ -509,40 +509,30 @@ let currentQuery  = '';
 let currentType   = '';
 let currentYear   = '';
 
+function el(id) { return document.getElementById(id); }
+
 function doSearch() {
-    currentQuery = document.getElementById('searchInput').value.trim();
-    currentType  = document.getElementById('typeFilter').value;
-    currentYear  = document.getElementById('yearFilter').value.trim();
-    searchPage   = 1;
-    searchTotal  = 0;
+    currentQuery  = (el('searchInput')  ? el('searchInput').value.trim()  : '');
+    currentType   = (el('typeFilter')   ? el('typeFilter').value           : '');
+    currentYear   = (el('yearFilter')   ? el('yearFilter').value.trim()    : '');
+    searchPage    = 1;
+    searchTotal   = 0;
     searchHasMore = false;
 
-    document.getElementById('searchGrid').innerHTML = '';
-    document.getElementById('endMessage').style.display = 'none';
+    if (el('searchGrid'))  el('searchGrid').innerHTML = '';
+    if (el('endMessage'))  el('endMessage').style.display = 'none';
 
-    // Trigger search jika ada query ATAU year ATAU type dipilih
     const hasFilter = currentQuery || currentYear || currentType;
 
     if (hasFilter) {
-        document.getElementById('categoriesSection').style.display    = 'none';
-        document.getElementById('heroCarousel').style.display         = 'none';
-        document.getElementById('heroSection').style.display          = 'none';
-        document.getElementById('searchResultsSection').style.display = 'block';
-
-        // Build label
-        let label = '{{ __("movies.search_results") }}';
-        const parts = [];
-        if (currentQuery) parts.push('"' + currentQuery + '"');
-        if (currentType)  parts.push('{{ __("movies.type") }}: ' + currentType);
-        if (currentYear)  parts.push('{{ __("movies.year") }}: ' + currentYear);
-        if (parts.length) label = '{{ __("movies.results_for") }}: ' + parts.join(' · ');
-        document.getElementById('searchResultsTitle').textContent = label;
-
+        if (el('categoriesSection'))    el('categoriesSection').style.display    = 'none';
+        if (el('heroCarousel'))         el('heroCarousel').style.display         = 'none';
+        if (el('searchResultsSection')) el('searchResultsSection').style.display = 'block';
         fetchSearchPage();
     } else {
-        document.getElementById('categoriesSection').style.display    = 'block';
-        document.getElementById('heroCarousel').style.display         = 'block';
-        document.getElementById('searchResultsSection').style.display = 'none';
+        if (el('categoriesSection'))    el('categoriesSection').style.display    = 'block';
+        if (el('heroCarousel'))         el('heroCarousel').style.display         = 'block';
+        if (el('searchResultsSection')) el('searchResultsSection').style.display = 'none';
     }
 }
 
