@@ -20,7 +20,10 @@
                 {{-- Poster --}}
                 <div class="detail-poster">
                     @if(isset($movie['Poster']) && $movie['Poster'] !== 'N/A')
-                    <img src="{{ $movie['Poster'] }}" alt="{{ $movie['Title'] }}">
+                    <div style="position:relative;">
+                        <div class="skeleton-card" id="posterSkeleton" style="position:absolute;inset:0;border-radius:8px;z-index:1;"></div>
+                        <img data-src="{{ $movie['Poster'] }}" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="{{ $movie['Title'] }}" class="lazy" style="opacity:0;transition:opacity 0.5s;border-radius:8px;width:100%;" onload="this.style.opacity=1;document.getElementById('posterSkeleton')&&(document.getElementById('posterSkeleton').style.display='none')">
+                    </div>
                     @else
                     <div style="aspect-ratio:2/3;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;">
                         <i class="fas fa-film" style="font-size:3rem;color:#555"></i>
@@ -155,6 +158,13 @@
 
 @push('scripts')
 <script>
+// Lazy load untuk semua gambar di halaman ini
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof observeLazy === 'function') {
+        observeLazy(document);
+    }
+});
+
 const imdbId = @json($movie['imdbID'] ?? '');
 const movieTitle = @json($movie['Title'] ?? '');
 const movieYear = @json($movie['Year'] ?? '');
