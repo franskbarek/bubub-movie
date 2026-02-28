@@ -135,16 +135,20 @@
 
 @push('scripts')
 <script>
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-const favoriteIds = new Set(@json($favoriteIds));
+// Prevent duplicate script execution
+if (!window.bububMovieInitialized) {
+    window.bububMovieInitialized = true;
 
-// lazyObserver & observeLazy defined in layouts/app.blade.php
+    const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+    const favoriteIds = new Set(@json($favoriteIds));
 
-// ─── Hero Carousel ────────────────────────────────────────
-let heroMovies   = [];   // array of full detail objects
-let heroIndex    = 0;
-let heroAutoTimer = null;
-let heroImdbId   = null;
+    // lazyObserver & observeLazy defined in layouts/app.blade.php
+
+    // ─── Hero Carousel ────────────────────────────────────────
+    let heroMovies   = [];   // array of full detail objects
+    let heroIndex    = 0;
+    let heroAutoTimer = null;
+    let heroImdbId   = null;
 
 // Box office keywords 2025-2026
 const BOX_OFFICE_QUERIES = [
@@ -526,7 +530,6 @@ function doSearch() {
     if (hasFilter) {
         document.getElementById('categoriesSection').style.display    = 'none';
         document.getElementById('heroCarousel').style.display         = 'none';
-        document.getElementById('heroSection').style.display          = 'none';
         document.getElementById('searchResultsSection').style.display = 'block';
 
         // Build label
@@ -549,13 +552,7 @@ function doSearch() {
 async function fetchSearchPage() {
     if (searchLoading || (!searchHasMore && searchPage > 1)) return;
     searchLoading = true;
-
-    const spinner   = document.getElementById('loadingSpinner');
-    const endMsg    = document.getElementById('endMessage');
-    const grid      = document.getElementById('searchGrid');
-
-    spinner.style.display = 'flex';
-    endMsg.style.display  = 'none';
+    document.getElementById('loadingSpinner').style.display = 'flex';
 
     try {
         const params = new URLSearchParams({
@@ -571,16 +568,11 @@ async function fetchSearchPage() {
 
         if (searchPage === 1) {
             searchTotal = total;
-            // Update judul dengan total hasil
-            let label = '{{ __("movies.search_results") }}';
-            const parts = [];
-            if (currentQuery) parts.push('"' + currentQuery + '"');
-            if (currentType)  parts.push('{{ __("movies.type") }}: ' + currentType);
-            if (currentYear)  parts.push('{{ __("movies.year") }}: ' + currentYear);
-            if (parts.length) label = '{{ __("movies.results_for") }}: ' + parts.join(' · ');
-            if (total) label += ' <span style="color:#888;font-size:0.8rem;font-weight:400;">(' + total + ' {{ __("movies.results") }})</span>';
-            document.getElementById('searchResultsTitle').innerHTML = label;
+            document.getElementById('searchResultsTitle').textContent =
+                '{{ __("movies.results_for") }}: "' + currentQuery + '" (' + total + ' {{ __("movies.results") }})';
         }
+
+        const grid = document.getElementById('searchGrid');
 
         if (!movies.length && searchPage === 1) {
             grid.innerHTML = `
@@ -594,47 +586,27 @@ async function fetchSearchPage() {
             const fragment = document.createDocumentFragment();
             movies.forEach(m => fragment.appendChild(buildCard(m)));
             grid.appendChild(fragment);
-            observeLazy(grid);
+            observeLazy(grid); // <-- observe AFTER appending
 
             searchPage++;
             const loaded = grid.querySelectorAll('.movie-card').length;
             searchHasMore = loaded < total && movies.length > 0;
 
             if (!searchHasMore) {
-                endMsg.style.display = 'block';
+                document.getElementById('endMessage').style.display = 'block';
             }
         }
     } catch(e) { console.error(e); }
     finally {
         searchLoading = false;
-        spinner.style.display = 'none';
+        document.getElementById('loadingSpinner').style.display = 'none';
     }
 }
 
-// ─── Infinite Scroll ─────────────────────────────────────
-// Sentinel observer — trigger fetchSearchPage saat hampir mentok bawah
-const sentinelEl = document.getElementById('searchSentinel');
-const scrollObserver = new IntersectionObserver(entries => {
-    if (entries[0].isIntersecting && searchHasMore && !searchLoading) {
-        fetchSearchPage();
-    }
-}, { rootMargin: '600px' }); // 600px sebelum mentok sudah trigger
-
-scrollObserver.observe(sentinelEl);
-
-// Fallback: window scroll event (backup kalau IntersectionObserver miss)
-window.addEventListener('scroll', () => {
-    if (!searchHasMore || searchLoading) return;
-    const section = document.getElementById('searchResultsSection');
-    if (!section || section.style.display === 'none') return;
-
-    const scrollBottom = window.innerHeight + window.scrollY;
-    const docHeight    = document.documentElement.scrollHeight;
-
-    if (scrollBottom >= docHeight - 300) {
-        fetchSearchPage();
-    }
-}, { passive: true });
+// Infinite scroll
+new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && searchHasMore && !searchLoading) fetchSearchPage();
+}, { rootMargin: '400px' }).observe(document.getElementById('searchSentinel'));
 
 // ─── Autocomplete ─────────────────────────────────────────
 let acTimer;
@@ -693,6 +665,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadCategory('drama',    'drama');
     loadCategory('comedy',   'comedy');
 });
+
+} // End of bububMovieInitialized check
 </script>
 @endpush
 
